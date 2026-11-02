@@ -137,6 +137,55 @@ void main() {
       expect(usbHardwareVolume.value, isNull);
     });
 
+    test('hardware volume buttons route to DAC volume via Android remote volume', () async {
+      hardwareVolume = {
+        'available': true,
+        'minDb': -90.0,
+        'maxDb': 0.0,
+        'currentDb': -45.0,
+      };
+      await deck.setFileSource(
+        '/one.flac',
+        preferBitPerfect: true,
+        directUsb: true,
+      );
+      expect(usbHardwareVolume.value?.currentDb, -45);
+      expect(handler.androidPlaybackInfo.value, isA<RemoteAndroidPlaybackInfo>());
+      expect(
+        (handler.androidPlaybackInfo.value as RemoteAndroidPlaybackInfo).volume,
+        50,
+      );
+
+      // Volume UP button pressed: raises by 5%
+      await handler.androidAdjustRemoteVolume(AndroidVolumeDirection.raise);
+      expect(usbHardwareVolume.value?.currentDb, -40.5);
+      expect(
+        (handler.androidPlaybackInfo.value as RemoteAndroidPlaybackInfo).volume,
+        55,
+      );
+
+      // Volume DOWN button pressed: lowers by 5%
+      await handler.androidAdjustRemoteVolume(AndroidVolumeDirection.lower);
+      expect(usbHardwareVolume.value?.currentDb, -45.0);
+      expect(
+        (handler.androidPlaybackInfo.value as RemoteAndroidPlaybackInfo).volume,
+        50,
+      );
+
+      // Direct slider drag: set to 80%
+      await handler.androidSetRemoteVolume(80);
+      expect(usbHardwareVolume.value?.currentDb, -18.0);
+      expect(
+        (handler.androidPlaybackInfo.value as RemoteAndroidPlaybackInfo).volume,
+        80,
+      );
+
+      // When USB playback stops, restores local Android volume control
+      await deck.stop();
+      expect(usbHardwareVolume.value, isNull);
+      expect(handler.androidPlaybackInfo.value, isA<LocalAndroidPlaybackInfo>());
+    });
+
     test(
       'uncontrolled DAC is blocked without ordinary full-volume fallback',
       () async {

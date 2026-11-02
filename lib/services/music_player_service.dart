@@ -390,6 +390,9 @@ class MusicPlayerHandler extends BaseAudioHandler
     unawaited(_configureAudioSession());
     _refreshPlaybackAutomation();
 
+    usbHardwareVolume.addListener(_onUsbVolumeChanged);
+    _onUsbVolumeChanged();
+
     _listenToPlayer(_player);
     if (_dependencies.isIOS) WidgetsBinding.instance.addObserver(this);
   }
@@ -424,6 +427,53 @@ class MusicPlayerHandler extends BaseAudioHandler
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       unawaited(restoreIosNowPlaying());
+    }
+  }
+
+  int? _usbVolumeIndex;
+
+  void _onUsbVolumeChanged() {
+    if (_disposed) return;
+    final state = usbHardwareVolume.value;
+    if (state != null && state.available) {
+      final index = (state.fraction.clamp(0.0, 1.0) * 100).round();
+      if (index == _usbVolumeIndex) return;
+      _usbVolumeIndex = index;
+      androidPlaybackInfo.add(
+        RemoteAndroidPlaybackInfo(
+          volumeControlType: AndroidVolumeControlType.absolute,
+          maxVolume: 100,
+          volume: index,
+        ),
+      );
+    } else {
+      if (_usbVolumeIndex != null) {
+        _usbVolumeIndex = null;
+        androidPlaybackInfo.add(LocalAndroidPlaybackInfo());
+      }
+    }
+  }
+
+  @override
+  Future<void> androidSetRemoteVolume(int volumeIndex) async {
+    final state = usbHardwareVolume.value;
+    if (state != null && state.available) {
+      final index = volumeIndex.clamp(0, 100);
+      if (index == _usbVolumeIndex) return;
+      _usbVolumeIndex = index;
+      await setUsbHardwareVolume(index / 100.0);
+    }
+  }
+
+  @override
+  Future<void> androidAdjustRemoteVolume(AndroidVolumeDirection direction) async {
+    final state = usbHardwareVolume.value;
+    if (state != null && state.available) {
+      final step = direction.index * 5;
+      final current =
+          _usbVolumeIndex ?? (state.fraction.clamp(0.0, 1.0) * 100).round();
+      final nextIndex = (current + step).clamp(0, 100);
+      await androidSetRemoteVolume(nextIndex);
     }
   }
 
@@ -2533,6 +2583,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     await _autoMix.dispose();
     await _gapless.dispose();
     _haptics.dispose();
+    usbHardwareVolume.removeListener(_onUsbVolumeChanged);
     for (final sub in _subscriptions) {
       await sub.cancel();
     }
