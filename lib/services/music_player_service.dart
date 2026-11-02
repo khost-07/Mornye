@@ -1604,6 +1604,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         dapExclusive: _settings.dapExclusive,
         allowDop: _settings.usbDsdOverPcm,
         requiresDsd: _requiresDsd(media),
+        forceSoftwareVolume: _settings.usbSoftwareVolume,
       );
     }
     if (!_isCurrentPlayRequest(generation, media)) return;

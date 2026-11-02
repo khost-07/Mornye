@@ -157,6 +157,31 @@ void main() {
     );
 
     test(
+      'software volume passes option and provides volume on uncontrolled DAC',
+      () async {
+        volumeBlocked = false;
+        hardwareVolume = {
+          'available': true,
+          'minDb': -62.0,
+          'maxDb': 0.0,
+          'currentDb': -20.0,
+          'isSoftware': true,
+        };
+        await deck.setFileSource(
+          '/one.flac',
+          preferBitPerfect: true,
+          directUsb: true,
+          forceSoftwareVolume: true,
+        );
+        expect(prepareArguments['forceSoftwareVolume'], isTrue);
+        expect(usbHardwareVolume.value?.isSoftware, isTrue);
+        expect(usbHardwareVolume.value?.currentDb, -20.0);
+        await setUsbHardwareVolume(1.0);
+        expect(usbHardwareVolume.value?.currentDb, 0.0);
+      },
+    );
+
+    test(
       'AAudio exclusive and fixed volume require explicit options',
       () async {
         await deck.setFileSource(
@@ -212,6 +237,25 @@ void main() {
         );
         expect(native.sources['usb-test'], isNull);
         expect(usbAudioStatus.value.reason, 'dsd_unsupported');
+      },
+    );
+
+    test(
+      'software volume with DSD reports dsd_software_volume error and halts',
+      () async {
+        fallbackReason = 'dsd_software_volume';
+        fatal = true;
+        await expectLater(
+          deck.setFileSource(
+            '/one.dsf',
+            preferBitPerfect: true,
+            directUsb: true,
+            forceSoftwareVolume: true,
+          ),
+          throwsStateError,
+        );
+        expect(native.sources['usb-test'], isNull);
+        expect(usbAudioStatus.value.reason, 'dsd_software_volume');
       },
     );
 
