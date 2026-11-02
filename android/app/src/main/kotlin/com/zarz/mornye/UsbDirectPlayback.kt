@@ -38,6 +38,7 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
     private var format: UsbOutputFormat? = null
     private var pcm: UsbPcmSource? = null
     private var dsd: DsdSource? = null
+    private var isDsd = false
     private var pending: ByteBuffer? = null
     private var writeBuffer = ByteArray(0)
     private var playing = false
@@ -149,7 +150,7 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
 
     private fun prepare(request: Permission) {
         worker.post {
-            var isDsd = false
+            isDsd = false
             try {
                 if (request.revision != revision) { request.done(mapOf("reason" to "cancelled"), null); return@post }
                 closeSource()
@@ -384,6 +385,7 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
         durationUs = 0
         pausedPositionUs = 0
         writtenFrames = 0
+        isDsd = false
         forceSoftwareVolume = false
         softwareGain = 1.0f
     }

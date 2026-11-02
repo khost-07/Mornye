@@ -57,6 +57,17 @@ jobs:
       - name: Configure Flutter SDK for Gradle
         run: echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
 
+      - name: Cache Cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust_backend/target
+          key: cargo-${{ runner.os }}-android-${{ hashFiles('rust_backend/rust-toolchain.toml') }}-${{ hashFiles('rust_backend/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-android-${{ hashFiles('rust_backend/rust-toolchain.toml') }}-
+
       - name: Install Rust build prerequisites
         run: |
           cd rust_backend
